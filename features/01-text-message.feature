@@ -1,0 +1,10 @@
+Feature: Test message payload
+
+  Scenario Outline: Platform "<platform>" with chatbots "<chatbots>": Testing text message
+    Given prepare chatbots
+    When a text message ("<message>") is added for "<chatbots>"
+    Then text message ("<message>") must be exists in the "<chatbots>" payload
+    Examples: ObjectParameters
+      | chatbots      | platform   | message        |
+      | line          | botnoi_sme | test a message |
+      | line,facebook | botnoi_sme | test a message |
