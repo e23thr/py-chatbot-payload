@@ -17,13 +17,14 @@ def parse_line(rows: list):
                                                sticker_id=data.get("stickerId", None)))
 
         if row["type"] == "image":
-            result.append(line_image_message(original_content_url=data.get("original_content_url", None),
-                                             preview_image_url=data.get("preview_image_url", None)))
+            print("PARSE::DEBUG: ", data.get("image_url",None))
+            result.append(line_image_message(original_content_url=data.get("image_url", None),
+                                             preview_image_url=data.get("preview_url", None)))
 
         if row["type"] == "video":
-            result.append(line_video_message(original_content_url=data.get("original_content_url", None),
-                                             preview_image_url=data.get("preview_image_url", None),
-                                             tracking_id=data.get("tracking_id", None)))
+            print("LINE::VIDEO", data)
+            result.append(line_video_message(original_content_url=data.get("video_url", None),
+                                             preview_image_url=data.get("preview_url", None)))
 
     return result
 
@@ -38,13 +39,13 @@ def parse_facebook(rows: list):
             result.append(facebook_text_message(message=data.get("text", None)))
 
         if data_type == "image":
-            result.append(facebook_image_message(attachment_id=data.get("attachment_id", None),
-                                                 url=data.get("url", None)))
+            result.append(facebook_image_message(url=data.get("image_url", None),
+                                                 is_reusable=data.get("is_reusable", None)))
 
         if data_type == "video":
             result.append(
-                facebook_video_message(attachment_id=data.get("attachment_id", None),
-                                       url=data.get("url", None)))
+                facebook_video_message(url=data.get("video_url", None),
+                                       is_reusable=data.get("is_reusable", None)))
 
     return result
 
@@ -58,7 +59,7 @@ class Payloads:
 
     def __init__(self, chat_bots: list = ["line"], platform: str = PLATFORM_BOTNOI_SME):
         """
-        :param chatbots: list of available chatbots to create payloads
+        :param chat_bots: list of available chatbots to create payloads
         :param platform: specify platform to use (now support only botnoi-sme)
         """
         # Verify parameter types
@@ -82,9 +83,8 @@ class Payloads:
         keys = self.__data.keys()
         data = {}
         for key in keys:
+
             # self.CHAT_BOT_LINE
-            # print("Key: ", key)
-            # print("Data", self.__data[key])
             if key == self.CHAT_BOT_LINE:
                 data[key] = parse_line(self.__data[key])
 
@@ -123,7 +123,7 @@ class Payloads:
         Create a sticker message payload (now available only line chatbot)
         :param package_id: (str) Sticker package id
         :param sticker_id: (str) Sticker id
-        :param chat_bot: (str) only instance.CHAT_BOT_LINE
+        :param chat_bot: (str) one of instance.CHAT_BOT_LINE, instance.CHAT_BOT_FACEBOOK
         :return: None
         """
         self.__check_if_chatbot_is_available(chat_bot=chat_bot,
@@ -137,99 +137,147 @@ class Payloads:
             }
         })
 
-    def image_message(self, **kwargs):
+    def image_message(self, image_url: str, preview_url: str = None, is_reusable: bool = True,
+                      chat_bot: str = CHAT_BOT_LINE):
         """
-        Create a image message payload
-        :param kwargs:
-            [line] (str)original_content_url, (str)preview_image_url are required
-            [facebook] (str)attachment_id or (str)url is required
+        Create an image message payload
+
+        :param image_url: URL of the image
+        :param preview_url: (Line) preview image
+        :param is_reusable: (Facebook) if imageUrl can be shared
+        :param chat_bot: (str) one of instance.CHAT_BOT_LINE, instance.CHAT_BOT_FACEBOOK
         :return: None
+
         """
-        chat_bot = kwargs["chatbot"]
         self.__check_if_chatbot_is_available(chat_bot=chat_bot,
                                              possible_chat_bots=[self.CHAT_BOT_LINE, self.CHAT_BOT_FACEBOOK])
 
-        data = {"type": "image", "data": {}}
-        if chat_bot == self.CHAT_BOT_LINE:
-            original_content_url = kwargs["original_content_url"]
-            preview_image_url = kwargs["preview_image_url"]
-            check_type(original_content_url, str, can_be_none=False)
-            check_type(preview_image_url, str, can_be_none=False)
-            data['data'] = {
-                "original_content_url": original_content_url,
-                "preview_image_url": preview_image_url
+        self.__data[chat_bot].append({
+            "type": "image",
+            "data": {
+                "image_url": image_url,
+                "preview_url": preview_url,  # for Line
+                "is_reusable": is_reusable  # for facebook
             }
+        })
 
-        if chat_bot == self.CHAT_BOT_FACEBOOK:
-            attachment_id = kwargs["attachment_id"] if "attachment_id" in kwargs else None
-            url = kwargs["url"] if "url" in kwargs else None
-            check_type(attachment_id, str, can_be_none=True)
-            check_type(url, str, can_be_none=True)
-            if attachment_id is None and url is None:
-                self.__raise_exception("attachment_id or url must be specified in chatbot {self.CHAT_BOT_FACEBOOK}")
-
-            if attachment_id is not None and url is not None:
-                self.__raise_exception("Please specify only attachment_id or url")
-
-            if attachment_id is not None:
-                data["data"] = {
-                    "attachment_id": attachment_id
-                }
-
-            if url is not None:
-                data["data"] = {
-                    "url": url
-                }
-
-        self.__data[chat_bot].append(data)
-
-    def video_message(self, **kwargs):
+    def video_message(self, video_url: str, preview_url: str = None, is_reusable: bool = True,
+                      chat_bot: str = CHAT_BOT_LINE):
         """
+        Create an video message payload
 
-        :param kwargs:
-            [line] (str)original_content_url, (str)preview_image_url are required and (str)tracking_id is optional
-            [facebook] (str)attachment_id or (str)url is required
-        :return:
+        :param video_url: URL of the image
+        :param preview_url: (Line) preview image
+        :param is_reusable: (Facebook) if imageUrl can be shared
+        :param chat_bot: (str) one of instance.CHAT_BOT_LINE, instance.CHAT_BOT_FACEBOOK
+        :return: None
+
         """
-        chat_bot = kwargs["chatbot"]
         self.__check_if_chatbot_is_available(chat_bot=chat_bot,
                                              possible_chat_bots=[self.CHAT_BOT_LINE, self.CHAT_BOT_FACEBOOK])
 
-        data = {"type": "video", "data": {}}
-        if chat_bot == self.CHAT_BOT_LINE:
-            original_content_url = kwargs.get("original_content_url", None)
-            preview_image_url = kwargs.get("preview_image_url", None)
-            tracking_id = kwargs.get("tracking_id", None)
-
-            check_type(original_content_url, str, can_be_none=False)
-            check_type(preview_image_url, str, can_be_none=False)
-            check_type(tracking_id, str, can_be_none=True)
-
-            data['data'] = {
-                "original_content_url": original_content_url,
-                "preview_image_url": preview_image_url,
-                "tracking_id": tracking_id
+        # print("video_message: ", video_url)
+        self.__data[chat_bot].append({
+            "type": "video",
+            "data": {
+                "video_url": video_url,
+                "preview_url": preview_url,  # for Line
+                "is_reusable": is_reusable  # for facebook
             }
-
-        if chat_bot == self.CHAT_BOT_FACEBOOK:
-            attachment_id = kwargs.get("attachment_id", None)
-            url = kwargs.get("url", None)
-            check_type(attachment_id, str, can_be_none=True)
-            check_type(url, str, can_be_none=True)
-            if attachment_id is None and url is None:
-                self.__raise_exception("attachment_id or url must be specified in chatbot {self.CHAT_BOT_FACEBOOK}")
-
-            if attachment_id is not None and url is not None:
-                self.__raise_exception("Please specify only attachment_id or url")
-
-            if attachment_id is not None:
-                data["data"] = {
-                    "attachment_id": attachment_id
-                }
-
-            if url is not None:
-                data["data"] = {
-                    "url": url
-                }
-
-        self.__data[chat_bot].append(data)
+        })
+    # def image_message(self, **kwargs):
+    #     """
+    #     Create a image message payload
+    #     :param kwargs:
+    #         [line] (str)original_content_url, (str)preview_image_url are required
+    #         [facebook] (str)attachment_id or (str)url is required
+    #     :return: None
+    #     """
+    #     chat_bot = kwargs["chatbot"]
+    #     self.__check_if_chatbot_is_available(chat_bot=chat_bot,
+    #                                          possible_chat_bots=[self.CHAT_BOT_LINE, self.CHAT_BOT_FACEBOOK])
+    #
+    #     data = {"type": "image", "data": {}}
+    #     if chat_bot == self.CHAT_BOT_LINE:
+    #         original_content_url = kwargs["original_content_url"]
+    #         preview_image_url = kwargs["preview_image_url"]
+    #         check_type(original_content_url, str, can_be_none=False)
+    #         check_type(preview_image_url, str, can_be_none=False)
+    #         data['data'] = {
+    #             "original_content_url": original_content_url,
+    #             "preview_image_url": preview_image_url
+    #         }
+    #
+    #     if chat_bot == self.CHAT_BOT_FACEBOOK:
+    #         attachment_id = kwargs["attachment_id"] if "attachment_id" in kwargs else None
+    #         url = kwargs["url"] if "url" in kwargs else None
+    #         check_type(attachment_id, str, can_be_none=True)
+    #         check_type(url, str, can_be_none=True)
+    #         if attachment_id is None and url is None:
+    #             self.__raise_exception("attachment_id or url must be specified in chatbot {self.CHAT_BOT_FACEBOOK}")
+    #
+    #         if attachment_id is not None and url is not None:
+    #             self.__raise_exception("Please specify only attachment_id or url")
+    #
+    #         if attachment_id is not None:
+    #             data["data"] = {
+    #                 "attachment_id": attachment_id
+    #             }
+    #
+    #         if url is not None:
+    #             data["data"] = {
+    #                 "url": url
+    #             }
+    #
+    #     self.__data[chat_bot].append(data)
+    #
+    # def video_message(self, **kwargs):
+    #     """
+    #
+    #     :param kwargs:
+    #         [line] (str)original_content_url, (str)preview_image_url are required and (str)tracking_id is optional
+    #         [facebook] (str)attachment_id or (str)url is required
+    #     :return:
+    #     """
+    #     chat_bot = kwargs["chatbot"]
+    #     self.__check_if_chatbot_is_available(chat_bot=chat_bot,
+    #                                          possible_chat_bots=[self.CHAT_BOT_LINE, self.CHAT_BOT_FACEBOOK])
+    #
+    #     data = {"type": "video", "data": {}}
+    #     if chat_bot == self.CHAT_BOT_LINE:
+    #         original_content_url = kwargs.get("original_content_url", None)
+    #         preview_image_url = kwargs.get("preview_image_url", None)
+    #         tracking_id = kwargs.get("tracking_id", None)
+    #
+    #         check_type(original_content_url, str, can_be_none=False)
+    #         check_type(preview_image_url, str, can_be_none=False)
+    #         check_type(tracking_id, str, can_be_none=True)
+    #
+    #         data['data'] = {
+    #             "original_content_url": original_content_url,
+    #             "preview_image_url": preview_image_url,
+    #             "tracking_id": tracking_id
+    #         }
+    #
+    #     if chat_bot == self.CHAT_BOT_FACEBOOK:
+    #         attachment_id = kwargs.get("attachment_id", None)
+    #         url = kwargs.get("url", None)
+    #         check_type(attachment_id, str, can_be_none=True)
+    #         check_type(url, str, can_be_none=True)
+    #         if attachment_id is None and url is None:
+    #             self.__raise_exception("attachment_id or url must be specified in chatbot {self.CHAT_BOT_FACEBOOK}")
+    #
+    #         if attachment_id is not None and url is not None:
+    #             self.__raise_exception("Please specify only attachment_id or url")
+    #
+    #         if attachment_id is not None:
+    #             data["data"] = {
+    #                 "attachment_id": attachment_id
+    #             }
+    #
+    #         if url is not None:
+    #             data["data"] = {
+    #                 "url": url
+    #             }
+    #
+    #     self.__data[chat_bot].append(data)

@@ -12,6 +12,17 @@ def step_impl(context, message, chatbots):
         context.my_object.text_message(chat_bot=chatbot, message=message)
 
 
+@then(u'payload must be array having at least 1 element')
+def step_impl(context):
+    chatbots = context.active_outline['chatbots'].split(",")
+    data = dict(context.my_object)
+    for chatbot in chatbots:
+        chatbot_objects = data.get(chatbot, None)
+        assert type(chatbot_objects) == list
+        assert len(chatbot_objects) > 0
+
+
+
 @then(u'text message ("{message}") must be exists in the "{chatbots}" payload')
 def step_impl(context, message, chatbots):
     result = dict(context.my_object)

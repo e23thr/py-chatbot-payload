@@ -8,7 +8,35 @@ def facebook_text_message(message: str):
     }
 
 
-def facebook_image_message(attachment_id: str = None, url: str = None):
+def facebook_image_message(url: str, is_reusable: bool = True):
+    __type_check(url, str, can_be_none=False)
+    __type_check(is_reusable, bool, can_be_none=False)
+    return {
+        "attachment": {
+            "type": "image",
+            "payload": {
+                "url": url,
+                "is_reusable": is_reusable
+            }
+        }
+    }
+
+
+def facebook_video_message(url: str, is_reusable: bool = True):
+    __type_check(url, str, can_be_none=False)
+    __type_check(is_reusable, bool, can_be_none=False)
+    return {
+        "attachment": {
+            "type": "video",
+            "payload": {
+                "url": url,
+                "is_reusable": is_reusable
+            }
+        }
+    }
+
+
+def facebook_image_template_message(attachment_id: str = None, url: str = None):
     __type_check(attachment_id, str, can_be_none=True)
     __type_check(url, str, can_be_none=True)
     if attachment_id is None and url is None:
@@ -36,7 +64,7 @@ def facebook_image_message(attachment_id: str = None, url: str = None):
     return payload
 
 
-def facebook_video_message(attachment_id: str = None, url: str = None):
+def facebook_video_template_message(attachment_id: str = None, url: str = None):
     __type_check(attachment_id, str, can_be_none=True)
     __type_check(url, str, can_be_none=True)
     if attachment_id is None and url is None:

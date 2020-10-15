@@ -20,6 +20,8 @@ def line_sticker_message(package_id: str, sticker_id: str):
 
 
 def line_image_message(original_content_url: str, preview_image_url: str):
+    print("DEBUG: ", original_content_url)
+    print("DEBUG: ", preview_image_url)
     __type_check(original_content_url, str, can_be_none=False)
     __type_check(preview_image_url, str, can_be_none=False)
     return {
@@ -29,7 +31,7 @@ def line_image_message(original_content_url: str, preview_image_url: str):
     }
 
 
-def line_video_message(original_content_url: str, preview_image_url: str, tracking_id: str):
+def line_video_message(original_content_url: str, preview_image_url: str, tracking_id: str = None):
     __type_check(original_content_url, str, can_be_none=False)
     __type_check(preview_image_url, str, can_be_none=False)
     __type_check(tracking_id, str, can_be_none=True)
